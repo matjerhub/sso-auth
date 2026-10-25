@@ -10,7 +10,6 @@ import {
   listAuthenticationMethodTypes,
 } from "@/lib/zitadel";
 import { Code, ConnectError, Duration, create } from "@zitadel/client";
-import { AddUserGrantRequestSchema, ManagementService } from "@zitadel/proto/zitadel/management_pb";
 import { Factors } from "@zitadel/proto/zitadel/session/v2/session_pb";
 import { Checks, ChecksJson, ChecksSchema } from "@zitadel/proto/zitadel/session/v2/session_service_pb";
 import crypto from "crypto";
@@ -19,7 +18,6 @@ import { cookies, headers } from "next/headers";
 import { completeFlowOrGetUrl } from "../client";
 import { getOrSetFingerprintId } from "../fingerprint";
 import { createLogger } from "../logger";
-import { createServiceForHost } from "../service";
 import { getServiceConfig } from "../service-url";
 import { checkEmailVerification, checkMFAFactors } from "../verify-helper";
 
@@ -97,15 +95,29 @@ async function ensureRegistrationGrant(
     return;
   }
 
-  const managementService = await createServiceForHost(ManagementService, serviceConfig);
-  await managementService.addUserGrant(
-    create(AddUserGrantRequestSchema, {
-      userId,
-      projectId: grant.projectId,
-      roleKeys: [grant.roleKey],
-    }),
-    {},
+  const serviceToken = process.env.ZITADEL_SERVICE_USER_TOKEN;
+  if (!serviceToken) {
+    throw new Error("ZITADEL_SERVICE_USER_TOKEN is required for registration grants");
+  }
+
+  const response = await fetch(
+    `${serviceConfig.baseUrl.replace(/\/$/, "")}/management/v1/users/${encodeURIComponent(userId)}/grants`,
+    {
+      method: "POST",
+      headers: {
+        authorization: `Bearer ${serviceToken}`,
+        "content-type": "application/json",
+        ...(serviceConfig.instanceHost ? { "x-zitadel-instance-host": serviceConfig.instanceHost } : {}),
+      },
+      body: JSON.stringify({ projectId: grant.projectId, roleKeys: [grant.roleKey] }),
+    },
   );
+  if (!response.ok) {
+    const responseBody = await response.text().catch(() => "");
+    throw new Error(
+      `registration grant request failed with HTTP ${response.status}: ${responseBody.slice(0, 500)}`,
+    );
+  }
 
   logger.info("Assigned registration role for OIDC client", {
     userId,
@@ -203,7 +215,7 @@ export async function registerUser(
     logger.error("Failed to assign registration project role", {
       userId: addResponse.userId,
       requestId: command.requestId,
-      error,
+      error: error instanceof Error ? error.message : String(error),
     });
   }
 
