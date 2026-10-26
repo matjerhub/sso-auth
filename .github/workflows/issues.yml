@@ -7,15 +7,18 @@ on:
   pull_request_target:
     types:
       - opened
+      - synchronize
 
 jobs:
   add-to-project:
     name: Add issue and community pr to project
     runs-on: ubuntu-latest
+    env:
+      ADD_TO_PROJECT_PAT: ${{ secrets.ADD_TO_PROJECT_PAT }}
     steps:
       - name: add issue
         uses: actions/add-to-project@v1.0.1
-        if: ${{ github.event_name == 'issues' }}
+        if: ${{ github.event_name == 'issues' && env.ADD_TO_PROJECT_PAT != '' }}
         with:
           # You can target a repository in a different organization
           # to the issue
@@ -23,20 +26,20 @@ jobs:
           github-token: ${{ secrets.ADD_TO_PROJECT_PAT }}
       - uses: tspascoal/get-user-teams-membership@v3
         id: checkUserMember
-        if: github.actor != 'dependabot[bot]'
+        if: ${{ github.actor != 'dependabot[bot]' && env.ADD_TO_PROJECT_PAT != '' }}
         with:
          username: ${{ github.actor }}
          GITHUB_TOKEN: ${{ secrets.ADD_TO_PROJECT_PAT }}
       - name: add pr
         uses: actions/add-to-project@v1.0.1
-        if: ${{ github.event_name == 'pull_request_target' && github.actor != 'dependabot[bot]' && !contains(steps.checkUserMember.outputs.teams, 'engineers')}}
+        if: ${{ github.event_name == 'pull_request_target' && github.actor != 'dependabot[bot]' && env.ADD_TO_PROJECT_PAT != '' && !contains(steps.checkUserMember.outputs.teams, 'engineers')}}
         with:
           # You can target a repository in a different organization
           # to the issue
           project-url: https://github.com/orgs/zitadel/projects/2
           github-token: ${{ secrets.ADD_TO_PROJECT_PAT }}
       - uses: actions-ecosystem/action-add-labels@v1.1.3
-        if: ${{ github.event_name == 'pull_request_target' && github.actor != 'dependabot[bot]' && !contains(steps.checkUserMember.outputs.teams, 'staff')}}
+        if: ${{ github.event_name == 'pull_request_target' && github.actor != 'dependabot[bot]' && env.ADD_TO_PROJECT_PAT != '' && !contains(steps.checkUserMember.outputs.teams, 'staff')}}
         with:
           github_token: ${{ secrets.ADD_TO_PROJECT_PAT }}
           labels: |

@@ -1,0 +1,96 @@
+name: Publish production images to Docker Hub
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: dockerhub-publish-${{ github.workflow }}-${{ github.event.workflow_run.head_branch || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the exact CI-verified commit
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build Linux Zitadel binary
+        run: pnpm nx run @zitadel/api:build-linux
+
+      - name: Build login application
+        run: pnpm nx run @zitadel/login:build
+
+      - name: Validate Docker Hub configuration
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+          API_IMAGE: ${{ vars.SSO_AUTH_API_IMAGE }}
+          LOGIN_IMAGE: ${{ vars.SSO_AUTH_LOGIN_IMAGE }}
+        run: |
+          set -euo pipefail
+          test -n "$DOCKERHUB_USERNAME" || { echo 'Missing secret DOCKERHUB_USERNAME'; exit 1; }
+          test -n "$DOCKERHUB_TOKEN" || { echo 'Missing secret DOCKERHUB_TOKEN'; exit 1; }
+          test -n "$API_IMAGE" || { echo 'Missing variable SSO_AUTH_API_IMAGE'; exit 1; }
+          test -n "$LOGIN_IMAGE" || { echo 'Missing variable SSO_AUTH_LOGIN_IMAGE'; exit 1; }
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and publish Zitadel API
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/api/Dockerfile
+          target: final
+          platforms: linux/amd64
+          push: true
+          build-args: |
+            TARGETPLATFORM=linux/amd64
+            BINARY=zitadel.local
+          tags: ${{ vars.SSO_AUTH_API_IMAGE }}
+          cache-from: type=gha,scope=sso-auth-api
+          cache-to: type=gha,mode=max,scope=sso-auth-api
+
+      - name: Build and publish login UI
+        uses: docker/build-push-action@v6
+        with:
+          context: apps/login
+          file: apps/login/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ${{ vars.SSO_AUTH_LOGIN_IMAGE }}
+          cache-from: type=gha,scope=sso-auth-login
+          cache-to: type=gha,mode=max,scope=sso-auth-login
