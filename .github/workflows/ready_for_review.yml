@@ -28,9 +28,17 @@ jobs:
               - [ ] If there are any open TODOs or follow-ups, they are described in issues and link to this PR
               - [ ] If there are deviations from a user stories acceptance criteria or design, they are agreed upon with the PO and documented.
               `;
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: content
-            })
+            try {
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: content
+              });
+            } catch (error) {
+              if (error.status === 403 || error.status === 404) {
+                core.notice('Welcome comment skipped because the workflow token cannot write comments.');
+              } else {
+                throw error;
+              }
+            }
