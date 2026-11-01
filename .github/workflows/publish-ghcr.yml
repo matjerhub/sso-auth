@@ -70,8 +70,8 @@ jobs:
             TARGETPLATFORM=linux/amd64
             BINARY=zitadel.local
           tags: |
-            ghcr.io/matjeroapps/zitadel-api:prod
-            ghcr.io/matjeroapps/zitadel-api:${{ github.sha }}
+            ghcr.io/matjerhub/zitadel-api:prod
+            ghcr.io/matjerhub/zitadel-api:${{ github.sha }}
           cache-from: type=gha,scope=sso-auth-api
           cache-to: type=gha,mode=max,scope=sso-auth-api
 
@@ -96,8 +96,8 @@ jobs:
           platforms: linux/amd64
           push: true
           tags: |
-            ghcr.io/matjeroapps/sso-auth-login:prod
-            ghcr.io/matjeroapps/sso-auth-login:${{ github.sha }}
+            ghcr.io/matjerhub/sso-auth-login:prod
+            ghcr.io/matjerhub/sso-auth-login:${{ github.sha }}
           cache-from: type=gha,scope=sso-auth-login
           cache-to: type=gha,mode=max,scope=sso-auth-login
       - name: Trigger Coolify SSO login deployment
