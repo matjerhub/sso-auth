@@ -1,6 +1,39 @@
-# Production SSO stack, deployed after platform-infra has created PostgreSQL
-# and the dedicated SSO database. Both services share the bootstrap volume.
+# Production SSO stack, deployed after platform-infra has created PostgreSQL.
+# This resource initializes its database; both runtime services share the
+# bootstrap volume.
 services:
+  postgres-init:
+    image: postgres:17-alpine
+    restart: "no"
+    environment:
+      PGHOST: ${POSTGRES_HOST:-postgres}
+      PGPORT: ${POSTGRES_PORT:-5432}
+      PGUSER: ${POSTGRES_USER:?Set POSTGRES_USER}
+      PGPASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      PGDATABASE: postgres
+      SSO_AUTH_DATABASE_NAME: ${SSO_AUTH_DATABASE_NAME:?Set SSO_AUTH_DATABASE_NAME}
+    entrypoint: [ "/bin/sh", "-ec" ]
+    command:
+      - |
+        attempt=0
+        until pg_isready; do
+          attempt=$((attempt + 1))
+          if [ "$${attempt}" -ge 60 ]; then
+            echo 'PostgreSQL did not become ready before timeout' >&2
+            exit 1
+          fi
+          sleep 2
+        done
+        psql --set=ON_ERROR_STOP=1 --set=sso_auth_database="$${SSO_AUTH_DATABASE_NAME}" <<'SQL'
+        SELECT format('CREATE DATABASE %I', :'sso_auth_database')
+        WHERE NOT EXISTS (
+          SELECT FROM pg_database WHERE datname = :'sso_auth_database'
+        )
+        \gexec
+        SQL
+    networks:
+      default: {}
+
   zitadel:
     image: ${SSO_AUTH_API_IMAGE:-ghcr.io/matjerhub/zitadel-api:prod}
     pull_policy: always
@@ -49,6 +82,8 @@ services:
       ZITADEL_DEFAULTINSTANCE_SMTP_FROM_NAME: ${ZITADEL_DEFAULTINSTANCE_SMTP_FROM_NAME:?Set sender name}
     volumes:
       - zitadel-bootstrap:/zitadel/bootstrap
+    depends_on:
+      postgres-init: { condition: service_completed_successfully }
     networks:
       default:
         aliases: [ zitadel ]

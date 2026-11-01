@@ -45,9 +45,9 @@ changing the Compose service topology. Local Compose also defaults
 Create a Git-based Docker Compose resource from the `sso-auth` repository and
 set its Compose file path to `/deploy/compose/docker-compose.coolify.yml`.
 Deploy the `platform-infra` resource first so
-PostgreSQL and the `SSO_AUTH_DATABASE_NAME` database are available. The SSO
-resource joins the existing `matjerhub-network`; it does not create or own the
-database. Zitadel and the Login UI remain together because the Login UI reads
+PostgreSQL is healthy. The SSO resource joins the existing
+`matjerhub-network` and creates `SSO_AUTH_DATABASE_NAME` before starting
+Zitadel. Zitadel and the Login UI remain together because the Login UI reads
 the PAT file that Zitadel creates in the shared `zitadel-bootstrap` volume.
 
 Create the database connection values as Coolify Shared Variables at the
@@ -59,14 +59,15 @@ Create the database connection values as Coolify Shared Variables at the
 | `POSTGRES_PORT` | `5432` |
 | `POSTGRES_USER` | Same PostgreSQL role configured in `platform-infra` |
 | `POSTGRES_PASSWORD` | Same PostgreSQL password configured in `platform-infra` (secret) |
-| `SSO_AUTH_DATABASE_NAME` | Same database name configured for `postgres-init` in `platform-infra` |
+| `SSO_AUTH_DATABASE_NAME` | Database to be created by the SSO Compose `postgres-init` job |
 
 Shared variables do not automatically appear in each resource. In both the
-`platform-infra` and `sso-auth` resources, add the matching environment
-variables and set each value to a reference such as
-`{{environment.POSTGRES_HOST}}`. Mark the password reference as secret. Keep
-the host as the Docker network alias `postgres`, not `localhost` or the public
-database address.
+`platform-infra` and `sso-auth` resources, reference `POSTGRES_USER` and
+`POSTGRES_PASSWORD` using values such as
+`{{environment.POSTGRES_USER}}`. In the SSO resource, also reference
+`POSTGRES_HOST`, `POSTGRES_PORT`, and `SSO_AUTH_DATABASE_NAME`. Mark the
+password reference as secret. Keep the host as the Docker network alias
+`postgres`, not `localhost` or the public database address.
 
 Set the remaining SSO bootstrap, SMTP, client IDs, project IDs, registration
 roles, and session secret on the `sso-auth` resource only. Keep the new
