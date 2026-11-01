@@ -34,7 +34,8 @@ pnpm nx run @zitadel/compose:local-up
 
 The images default to `matjerhub/sso-auth-api:local` and
 `matjerhub/sso-auth-login:local`. A production deployment can point
-`SSO_AUTH_API_IMAGE` and `SSO_AUTH_LOGIN_IMAGE` at Docker Hub tags without
+`SSO_AUTH_API_IMAGE` and `SSO_AUTH_LOGIN_IMAGE` at `ghcr.io/matjeroapps/zitadel-api:prod`
+and `ghcr.io/matjeroapps/sso-auth-login:prod` without
 changing the Compose service topology. Local Compose also defaults
 `SSO_AUTH_PULL_POLICY` to `never`; production should set it to `missing` or
 `always` after the images are published.
