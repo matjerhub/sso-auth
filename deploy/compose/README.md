@@ -81,10 +81,11 @@ the public SSO hostname: `/` redirects to `/ui/v2/login/`, `/ui/v2/login/*`
 goes to the Login UI, and the remaining OIDC/API paths go to Zitadel. Keep the
 path when routing `/ui/v2/login`; the Login UI expects that base path.
 
-Once the SSO resource is configured, set the GitHub Actions variable
-`COOLIFY_SSO_AUTH_RESOURCE_UUID` in this repository to that resource's UUID.
-The GHCR workflow publishes both images, then deploys this SSO resource once.
-Changes to `platform-infra` deploy its own resource separately.
+Configure the Coolify GitHub App integration to watch this repository and
+deploy the SSO Compose resource when the repository is updated. The GitHub
+Actions workflow only builds and publishes the two GHCR images; Coolify handles
+the Compose deployment from the repository update. Changes to `platform-infra`
+deploy its own resource separately.
 
 ## File Conventions
 
