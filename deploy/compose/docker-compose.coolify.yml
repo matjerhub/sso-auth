@@ -1,0 +1,93 @@
+# Production SSO stack, deployed after platform-infra has created PostgreSQL
+# and the dedicated SSO database. Both services share the bootstrap volume.
+services:
+  zitadel:
+    image: ${SSO_AUTH_API_IMAGE:-ghcr.io/matjerhub/zitadel-api:prod}
+    pull_policy: always
+    restart: unless-stopped
+    command:
+      - start-from-init
+      - --masterkey
+      - ${ZITADEL_MASTERKEY:?Set ZITADEL_MASTERKEY}
+      - --tlsMode
+      - external
+    expose: [ "8080" ]
+    environment:
+      ZITADEL_DATABASE_POSTGRES_HOST: ${POSTGRES_HOST:-postgres}
+      ZITADEL_DATABASE_POSTGRES_PORT: ${POSTGRES_PORT:-5432}
+      ZITADEL_DATABASE_POSTGRES_DATABASE: ${SSO_AUTH_DATABASE_NAME:?Set SSO_AUTH_DATABASE_NAME}
+      ZITADEL_DATABASE_POSTGRES_USER_USERNAME: ${POSTGRES_USER:?Set POSTGRES_USER}
+      ZITADEL_DATABASE_POSTGRES_USER_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      ZITADEL_DATABASE_POSTGRES_USER_SSL_MODE: disable
+      ZITADEL_DATABASE_POSTGRES_ADMIN_USERNAME: ${POSTGRES_USER:?Set POSTGRES_USER}
+      ZITADEL_DATABASE_POSTGRES_ADMIN_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
+      ZITADEL_DATABASE_POSTGRES_ADMIN_SSL_MODE: disable
+      ZITADEL_EXTERNALDOMAIN: ${ZITADEL_EXTERNALDOMAIN:?Set public SSO hostname}
+      ZITADEL_EXTERNALPORT: "443"
+      ZITADEL_EXTERNALSECURE: "true"
+      ZITADEL_TLS_ENABLED: "false"
+      ZITADEL_FIRSTINSTANCE_ORG_NAME: ${ZITADEL_FIRSTINSTANCE_ORG_NAME:?Set initial organization}
+      ZITADEL_FIRSTINSTANCE_ORG_HUMAN_USERNAME: ${ZITADEL_FIRSTINSTANCE_ORG_HUMAN_USERNAME:?Set initial admin username}
+      ZITADEL_FIRSTINSTANCE_ORG_HUMAN_PASSWORD: ${ZITADEL_FIRSTINSTANCE_ORG_HUMAN_PASSWORD:?Set initial admin password}
+      ZITADEL_FIRSTINSTANCE_ORG_MACHINE_MACHINE_USERNAME: ${ZITADEL_FIRSTINSTANCE_ORG_MACHINE_MACHINE_USERNAME:?Set machine username}
+      ZITADEL_FIRSTINSTANCE_ORG_MACHINE_MACHINE_NAME: ${ZITADEL_FIRSTINSTANCE_ORG_MACHINE_MACHINE_NAME:?Set machine name}
+      ZITADEL_FIRSTINSTANCE_ORG_MACHINE_MACHINEKEY_TYPE: "1"
+      ZITADEL_FIRSTINSTANCE_MACHINEKEYPATH: /zitadel/bootstrap/zitadel-admin-sa.json
+      ZITADEL_FIRSTINSTANCE_LOGINCLIENTPATPATH: /zitadel/bootstrap/login-client.pat
+      ZITADEL_FIRSTINSTANCE_ORG_LOGINCLIENT_MACHINE_USERNAME: login-client
+      ZITADEL_FIRSTINSTANCE_ORG_LOGINCLIENT_MACHINE_NAME: MatjerHub SSO Login Client
+      ZITADEL_FIRSTINSTANCE_ORG_LOGINCLIENT_PAT_EXPIRATIONDATE: ${SSO_AUTH_LOGIN_CLIENT_PAT_EXPIRATION:?Set initial PAT expiry}
+      ZITADEL_DEFAULTINSTANCE_FEATURES_LOGINV2_REQUIRED: "true"
+      ZITADEL_DEFAULTINSTANCE_FEATURES_LOGINV2_BASEURI: ${SSO_AUTH_LOGIN_PUBLIC_URL:?Set login UI origin}/ui/v2/login/
+      ZITADEL_OIDC_DEFAULTLOGINURLV2: ${SSO_AUTH_LOGIN_PUBLIC_URL:?Set login UI origin}/ui/v2/login/login?authRequest=
+      ZITADEL_OIDC_DEFAULTLOGOUTURLV2: ${SSO_AUTH_LOGIN_PUBLIC_URL:?Set login UI origin}/ui/v2/login/logout?post_logout_redirect=
+      ZITADEL_SAML_DEFAULTLOGINURLV2: ${SSO_AUTH_LOGIN_PUBLIC_URL:?Set login UI origin}/ui/v2/login/login?samlRequest=
+      ZITADEL_DEFAULTINSTANCE_SMTP_HOST: ${ZITADEL_DEFAULTINSTANCE_SMTP_HOST:?Set SMTP host}
+      ZITADEL_DEFAULTINSTANCE_SMTP_USER: ${ZITADEL_DEFAULTINSTANCE_SMTP_USER:?Set SMTP username}
+      ZITADEL_DEFAULTINSTANCE_SMTP_PASSWORD: ${ZITADEL_DEFAULTINSTANCE_SMTP_PASSWORD:?Set SMTP password}
+      ZITADEL_DEFAULTINSTANCE_SMTP_FROM: ${ZITADEL_DEFAULTINSTANCE_SMTP_FROM:?Set verified sender}
+      ZITADEL_DEFAULTINSTANCE_SMTP_FROM_NAME: ${ZITADEL_DEFAULTINSTANCE_SMTP_FROM_NAME:?Set sender name}
+    volumes:
+      - zitadel-bootstrap:/zitadel/bootstrap
+    networks:
+      default:
+        aliases: [ zitadel ]
+    healthcheck:
+      test: [ "CMD", "/app/zitadel", "ready" ]
+      interval: 10s
+      timeout: 15s
+      retries: 20
+      start_period: 30s
+
+  sso-auth-login:
+    image: ${SSO_AUTH_LOGIN_IMAGE:-ghcr.io/matjerhub/sso-auth-login:prod}
+    pull_policy: always
+    restart: unless-stopped
+    expose: [ "3000" ]
+    environment:
+      ZITADEL_API_URL: http://zitadel:8080
+      NEXT_PUBLIC_BASE_PATH: /ui/v2/login
+      ZITADEL_SERVICE_USER_TOKEN_FILE: /zitadel/bootstrap/login-client.pat
+      ZITADEL_SESSION_COOKIE_SECRET: ${SSO_AUTH_LOGIN_SESSION_COOKIE_SECRET:?Set login session secret}
+      MATJERHUB_SELLER_CLIENT_ID: ${ZITADEL_SELLER_CLIENT_ID:?Set seller client ID}
+      ZITADEL_SELLER_PROJECT_ID: ${ZITADEL_SELLER_PROJECT_ID:?Set seller project ID}
+      MATJERHUB_SELLER_REGISTRATION_ROLE: ${MATJERHUB_SELLER_REGISTRATION_ROLE:?Set seller registration role}
+      MATJERHUB_SUPPLIER_CLIENT_ID: ${ZITADEL_SUPPLIER_CLIENT_ID:?Set supplier client ID}
+      ZITADEL_SUPPLIER_PROJECT_ID: ${ZITADEL_SUPPLIER_PROJECT_ID:?Set supplier project ID}
+      MATJERHUB_SUPPLIER_REGISTRATION_ROLE: ${MATJERHUB_SUPPLIER_REGISTRATION_ROLE:?Set supplier registration role}
+      CUSTOM_REQUEST_HEADERS: Host:${ZITADEL_EXTERNALDOMAIN:?Set SSO hostname},X-Forwarded-Proto:https
+    volumes:
+      - zitadel-bootstrap:/zitadel/bootstrap:ro
+    networks:
+      default:
+        aliases: [ sso-auth-login ]
+    depends_on:
+      zitadel: { condition: service_healthy }
+
+volumes:
+  zitadel-bootstrap:
+
+networks:
+  default:
+    external: true
+    name: matjerhub-network

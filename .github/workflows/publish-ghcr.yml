@@ -88,7 +88,7 @@ jobs:
           cache-from: type=gha,scope=sso-auth-login
           cache-to: type=gha,mode=max,scope=sso-auth-login
       - name: Trigger Coolify platform-infra deployment
-        if: vars.COOLIFY_PLATFORM_INFRA_RESOURCE_UUID != ''
+        if: vars.COOLIFY_SSO_AUTH_RESOURCE_UUID != ''
         env:
           COOLIFY_API_URL: ${{ vars.COOLIFY_API_URL }}
           COOLIFY_API_TOKEN: ${{ secrets.COOLIFY_API_TOKEN }}
@@ -98,4 +98,4 @@ jobs:
           test -n "$COOLIFY_API_TOKEN" || { echo 'Missing secret COOLIFY_API_TOKEN'; exit 1; }
           curl --fail-with-body --silent --show-error --request POST \
             --header "Authorization: Bearer $COOLIFY_API_TOKEN" \
-            "$COOLIFY_API_URL/api/v1/deploy?uuid=${{ vars.COOLIFY_PLATFORM_INFRA_RESOURCE_UUID }}"
+            "$COOLIFY_API_URL/api/v1/deploy?uuid=${{ vars.COOLIFY_SSO_AUTH_RESOURCE_UUID }}"

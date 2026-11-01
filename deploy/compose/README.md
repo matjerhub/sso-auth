@@ -34,11 +34,56 @@ pnpm nx run @zitadel/compose:local-up
 
 The images default to `matjerhub/sso-auth-api:local` and
 `matjerhub/sso-auth-login:local`. A production deployment can point
-`SSO_AUTH_API_IMAGE` and `SSO_AUTH_LOGIN_IMAGE` at `ghcr.io/matjeroapps/zitadel-api:prod`
-and `ghcr.io/matjeroapps/sso-auth-login:prod` without
+`SSO_AUTH_API_IMAGE` and `SSO_AUTH_LOGIN_IMAGE` at `ghcr.io/matjerhub/zitadel-api:prod`
+and `ghcr.io/matjerhub/sso-auth-login:prod` without
 changing the Compose service topology. Local Compose also defaults
 `SSO_AUTH_PULL_POLICY` to `never`; production should set it to `missing` or
 `always` after the images are published.
+
+## Production deployment on Coolify
+
+Create a Git-based Docker Compose resource from the `sso-auth` repository and
+set its Compose file path to `/deploy/compose/docker-compose.coolify.yml`.
+Deploy the `platform-infra` resource first so
+PostgreSQL and the `SSO_AUTH_DATABASE_NAME` database are available. The SSO
+resource joins the existing `matjerhub-network`; it does not create or own the
+database. Zitadel and the Login UI remain together because the Login UI reads
+the PAT file that Zitadel creates in the shared `zitadel-bootstrap` volume.
+
+Create the database connection values as Coolify Shared Variables at the
+`MatjerHub / staging` environment scope:
+
+| Shared variable | Value |
+| --- | --- |
+| `POSTGRES_HOST` | `postgres` |
+| `POSTGRES_PORT` | `5432` |
+| `POSTGRES_USER` | Same PostgreSQL role configured in `platform-infra` |
+| `POSTGRES_PASSWORD` | Same PostgreSQL password configured in `platform-infra` (secret) |
+| `SSO_AUTH_DATABASE_NAME` | Same database name configured for `postgres-init` in `platform-infra` |
+
+Shared variables do not automatically appear in each resource. In both the
+`platform-infra` and `sso-auth` resources, add the matching environment
+variables and set each value to a reference such as
+`{{environment.POSTGRES_HOST}}`. Mark the password reference as secret. Keep
+the host as the Docker network alias `postgres`, not `localhost` or the public
+database address.
+
+Set the remaining SSO bootstrap, SMTP, client IDs, project IDs, registration
+roles, and session secret on the `sso-auth` resource only. Keep the new
+`ZITADEL_MASTERKEY` stable and back up the resource-managed
+`zitadel-bootstrap` volume. Configure GHCR pull credentials for the private
+packages and attach the Compose resource to `matjerhub-network`.
+
+Configure the Coolify Compose domains for the `zitadel` service on port 8080
+and `sso-auth-login` on port 3000. Preserve the existing routing contract on
+the public SSO hostname: `/` redirects to `/ui/v2/login/`, `/ui/v2/login/*`
+goes to the Login UI, and the remaining OIDC/API paths go to Zitadel. Keep the
+path when routing `/ui/v2/login`; the Login UI expects that base path.
+
+Once the SSO resource is configured, set the GitHub Actions variable
+`COOLIFY_SSO_AUTH_RESOURCE_UUID` in this repository to that resource's UUID.
+The GHCR workflow publishes both images, then deploys this SSO resource once.
+Changes to `platform-infra` deploy its own resource separately.
 
 ## File Conventions
 
