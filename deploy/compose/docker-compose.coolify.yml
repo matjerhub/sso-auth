@@ -12,12 +12,13 @@ services:
       PGPASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD}
       PGDATABASE: postgres
       SSO_AUTH_DATABASE_NAME: ${SSO_AUTH_DATABASE_NAME:?Set SSO_AUTH_DATABASE_NAME}
+      SSO_AUTH_LOGIN_PUBLIC_URL: ${SSO_AUTH_LOGIN_PUBLIC_URL:-https://sso.matjerhub.com}
     entrypoint: [ "/bin/sh", "-ec" ]
     command:
       - |
         attempt=0
         until pg_isready; do
-          attempt=$((attempt + 1))
+          attempt=$$((attempt + 1))
           if [ "$${attempt}" -ge 60 ]; then
             echo 'PostgreSQL did not become ready before timeout' >&2
             exit 1
@@ -31,6 +32,36 @@ services:
         )
         \gexec
         SQL
+
+        clean_url="$${SSO_AUTH_LOGIN_PUBLIC_URL%/}"
+        case "$${clean_url}" in
+          https://*|http://*) ;;
+          *) clean_url="https://$${clean_url}" ;;
+        esac
+        target_base_uri="$${clean_url}/ui/v2/login/"
+
+        tables_exist=$$(psql -tA --dbname="$${SSO_AUTH_DATABASE_NAME}" -c "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'projections' AND table_name = 'instance_features5');" 2>/dev/null || echo "f")
+        if [ "$${tables_exist}" = "t" ]; then
+          echo "Repairing LoginV2 baseURI in database..."
+          psql --set=ON_ERROR_STOP=1 --set=target_base_uri="$${target_base_uri}" --dbname="$${SSO_AUTH_DATABASE_NAME}" <<'SQL'
+          UPDATE projections.instance_features5
+          SET value = jsonb_set(value, '{baseURI}', to_jsonb(:'target_base_uri'::text))
+          WHERE key = 'login_v2' AND (value->>'baseURI' IS NOT NULL AND value->>'baseURI' NOT LIKE 'https://%');
+
+          UPDATE eventstore.events
+          SET payload = jsonb_set(payload, '{baseURI}', to_jsonb(:'target_base_uri'::text))
+          WHERE type IN ('feature_v2.instance.login_v2.set', 'feature_v2.system.login_v2.set')
+            AND (payload->>'baseURI' IS NOT NULL AND payload->>'baseURI' NOT LIKE 'https://%');
+
+          UPDATE projections.apps7_oidc_configs
+          SET login_base_uri = :'target_base_uri'
+          WHERE login_base_uri IS NOT NULL AND login_base_uri NOT LIKE 'https://%';
+
+          UPDATE projections.apps7_saml_configs
+          SET login_base_uri = :'target_base_uri'
+          WHERE login_base_uri IS NOT NULL AND login_base_uri NOT LIKE 'https://%';
+        SQL
+        fi
     networks:
       default: {}
 
