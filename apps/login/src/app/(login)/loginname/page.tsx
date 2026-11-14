@@ -15,6 +15,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function Page(props: { searchParams: Promise<Record<string | number | symbol, string | undefined>> }) {
   const searchParams = await props.searchParams;
+  const t = await getTranslations("loginname");
 
   const loginName = searchParams?.loginName;
   const requestId = searchParams?.requestId;
@@ -52,8 +53,8 @@ export default async function Page(props: { searchParams: Promise<Record<string 
   return (
     <DynamicTheme branding={branding}>
       <div className="flex flex-col items-center space-y-2 text-center">
-        <h1 className="font-heading text-matjerhub-foreground text-3xl font-bold tracking-tight">Log in</h1>
-        <p className="font-body text-matjerhub-muted-foreground text-base">Continue to MatjerHub SSO</p>
+        <h1 className="font-heading text-matjerhub-foreground text-3xl font-bold tracking-tight">{t("title")}</h1>
+        <p className="font-body text-matjerhub-muted-foreground text-base">{t("description")}</p>
       </div>
 
       <div className="w-full">

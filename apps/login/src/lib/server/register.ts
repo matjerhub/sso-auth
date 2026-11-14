@@ -114,9 +114,7 @@ async function ensureRegistrationGrant(
   );
   if (!response.ok) {
     const responseBody = await response.text().catch(() => "");
-    throw new Error(
-      `registration grant request failed with HTTP ${response.status}: ${responseBody.slice(0, 500)}`,
-    );
+    throw new Error(`registration grant request failed with HTTP ${response.status}: ${responseBody.slice(0, 500)}`);
   }
 
   logger.info("Assigned registration role for OIDC client", {

@@ -12,6 +12,20 @@ export const LANGS: Lang[] = [
     name: "العربية",
     code: "ar",
   },
+  { name: "Deutsch", code: "de" },
+  { name: "Français", code: "fr" },
+  { name: "简体中文", code: "zh" },
+  { name: "Español", code: "es" },
+  { name: "Italiano", code: "it" },
+  { name: "Português", code: "pt" },
+  { name: "Türkçe", code: "tr" },
+  { name: "Nederlands", code: "nl" },
+  { name: "Polski", code: "pl" },
+  { name: "Українська", code: "uk" },
+  { name: "中文", code: "zh" },
+  { name: "日本語", code: "ja" },
+  { name: "Magyar", code: "hu" },
+  { name: "Русский", code: "ru" },
 ];
 
 export const LANGUAGE_COOKIE_NAME = "NEXT_LOCALE";

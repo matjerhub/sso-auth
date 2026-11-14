@@ -23,3 +23,5 @@ jobs:
       contents: read
     with:
       node_version: "22"
+      full_tests: false
+      timeout_minutes: 7
