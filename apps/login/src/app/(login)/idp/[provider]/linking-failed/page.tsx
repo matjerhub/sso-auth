@@ -1,7 +1,8 @@
 import { DynamicTheme } from "@/components/dynamic-theme";
 import { Translated } from "@/components/translated";
-import { getServiceConfig } from "@/lib/service-url";
-import { getBrandingSettings } from "@/lib/zitadel";
+import { isKnownIdpError } from "@/lib/idp-errors";
+import { getServiceConfig } from "@/lib/server/service-url";
+import { getBrandingSettings } from "@/lib/server/zitadel";
 import { headers } from "next/headers";
 
 /**
@@ -28,7 +29,7 @@ export default async function LinkingFailedPage(props: {
         <p className="font-body text-matjerhub-muted-foreground text-base">
           <Translated i18nKey="errors.linkingFailed" namespace="idp" />
         </p>
-        {error && <p className="text-matjerhub-danger text-sm font-medium">{error}</p>}
+        {isKnownIdpError(error) && <p className="text-matjerhub-danger text-sm font-medium">{error}</p>}
       </div>
     </DynamicTheme>
   );

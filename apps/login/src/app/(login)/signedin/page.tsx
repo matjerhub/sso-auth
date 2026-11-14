@@ -2,12 +2,11 @@ import { Alert, AlertType } from "@/components/alert";
 import { Button, ButtonVariants } from "@/components/button";
 import { DynamicTheme } from "@/components/dynamic-theme";
 import { Translated } from "@/components/translated";
-import { resolveRedirectUri } from "@/lib/client";
-import { getMostRecentCookieWithLoginname, getSessionCookieById } from "@/lib/cookies";
-import { completeDeviceAuthorization } from "@/lib/server/device";
-import { getServiceConfig } from "@/lib/service-url";
-import { loadMostRecentSession } from "@/lib/session";
-import { getBrandingSettings, getLoginSettings, getSession, ServiceConfig } from "@/lib/zitadel";
+import { UserAvatar } from "@/components/user-avatar";
+import { resolveRedirectUri } from "@/lib/server/next-url";
+import { getServiceConfig } from "@/lib/server/service-url";
+import { loadMostRecentSession, loadSessionById } from "@/lib/server/session";
+import { getBrandingSettings, getLoginSettings } from "@/lib/server/zitadel";
 import { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { headers } from "next/headers";
@@ -16,20 +15,6 @@ import Link from "next/link";
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("signedin");
   return { title: t("title", { user: "" }) };
-}
-
-async function loadSessionById(serviceConfig: ServiceConfig, sessionId: string, organization?: string) {
-  const recent = await getSessionCookieById({ sessionId, organization });
-
-  if (!recent) {
-    return undefined;
-  }
-
-  return getSession({ serviceConfig, sessionId: recent.id, sessionToken: recent.token }).then((response) => {
-    if (response?.session) {
-      return response.session;
-    }
-  });
 }
 
 export default async function Page(props: { searchParams: Promise<any> }) {
@@ -41,38 +26,6 @@ export default async function Page(props: { searchParams: Promise<any> }) {
   const { loginName, requestId, organization, sessionId } = searchParams;
 
   const branding = await getBrandingSettings({ serviceConfig, organization });
-
-  // complete device authorization flow if device requestId is present
-  if (requestId && requestId.startsWith("device_")) {
-    const cookie = sessionId
-      ? await getSessionCookieById({ sessionId, organization })
-      : await getMostRecentCookieWithLoginname({
-          loginName: loginName,
-          organization: organization,
-        });
-
-    if (cookie) {
-      await completeDeviceAuthorization(requestId.replace("device_", ""), {
-        sessionId: cookie.id,
-        sessionToken: cookie.token,
-      }).catch((err) => {
-        return (
-          <DynamicTheme branding={branding}>
-            <div className="mb-6 flex flex-col items-center space-y-2 text-center">
-              <h1 className="font-heading text-matjerhub-foreground text-3xl font-bold tracking-tight">
-                <Translated i18nKey="error.title" namespace="signedin" />
-              </h1>
-              <p className="font-body text-matjerhub-muted-foreground text-base">
-                <Translated i18nKey="error.description" namespace="signedin" />
-              </p>
-            </div>
-            <Alert>{err.message}</Alert>
-            <div className="w-full"></div>
-          </DynamicTheme>
-        );
-      });
-    }
-  }
 
   const sessionFactors = sessionId
     ? await loadSessionById(serviceConfig, sessionId, organization)
@@ -99,11 +52,13 @@ export default async function Page(props: { searchParams: Promise<any> }) {
         <p className="font-body text-matjerhub-muted-foreground text-base">
           <Translated i18nKey="description" namespace="signedin" />
         </p>
-        <div className="mt-4 flex items-center gap-2">
-          <p className="font-body text-matjerhub-muted-foreground text-base font-medium">
-            {loginName ?? sessionFactors?.factors?.user?.loginName}
-          </p>
-        </div>
+
+        <UserAvatar
+          loginName={loginName ?? sessionFactors?.factors?.user?.loginName}
+          displayName={sessionFactors?.factors?.user?.displayName ?? loginName}
+          showDropdown={!(requestId && requestId.startsWith("device_"))}
+          searchParams={searchParams}
+        />
       </div>
 
       <div className="w-full">
