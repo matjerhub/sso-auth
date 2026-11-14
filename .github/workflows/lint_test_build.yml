@@ -74,14 +74,14 @@ jobs:
           NX_DAEMON: "false"
           NX_DISABLE_DB: "true"
           NX_NO_CLOUD: "true"
-        run: pnpm nx affected --nxBail --targets lint build --exclude @zitadel/docs
+        run: pnpm nx affected --nxBail --targets lint build --exclude @zitadel/docs --exclude @zitadel/api
       - name: Run affected unit tests
         if: ${{ !inputs.full_tests }}
         env:
           NX_DAEMON: "false"
           NX_DISABLE_DB: "true"
           NX_NO_CLOUD: "true"
-        run: pnpm nx affected --nxBail --targets test-unit --exclude @zitadel/docs --exclude @zitadel/functional-ui
+        run: pnpm nx affected --nxBail --targets test-unit --exclude @zitadel/docs --exclude @zitadel/api --exclude @zitadel/functional-ui
       - name: Lint, Test and Build affected projects
         if: ${{ inputs.full_tests }}
         env:
