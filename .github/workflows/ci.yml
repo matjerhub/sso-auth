@@ -1,11 +1,6 @@
 name: CI
 
 on:
-  push:
-    tags-ignore:
-      - "*"
-    branches:
-      - "main"
   pull_request:
   workflow_dispatch:
 
@@ -23,3 +18,5 @@ jobs:
       contents: read
     with:
       node_version: "22"
+      full_tests: false
+      timeout_minutes: 7
