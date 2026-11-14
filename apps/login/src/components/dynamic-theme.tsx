@@ -26,7 +26,7 @@ export function DynamicTheme({
   return (
     <div className="flex w-full flex-1 flex-col">
       {/* Brand Header */}
-      <header className="border-matjerhub-border bg-matjerhub-surface flex h-16 shrink-0 items-center border-b px-6 lg:px-8">
+      <header className="border-matjerhub-border bg-matjerhub-surface flex h-16 shrink-0 items-center border-b px-6 lg:px-8" dir="rtl">
         <div className="flex items-center gap-2">
           <span className="font-heading text-matjerhub-primary text-xl font-bold">MatjerHub</span>
           <span className="font-heading text-matjerhub-muted-foreground text-xl">SSO</span>
@@ -34,7 +34,7 @@ export function DynamicTheme({
       </header>
 
       {/* Main Content Area */}
-      <main className="flex w-full flex-1 flex-col items-center justify-center p-4 sm:p-8">
+      <main className="bg-matjerhub-background flex w-full flex-1 flex-col items-center justify-center p-4 sm:p-8" dir="rtl">
         <div className="w-full max-w-[440px]">
           <Card>
             <div className="flex flex-col space-y-8">

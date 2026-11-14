@@ -29,7 +29,8 @@ export const getButtonClasses = (
   size: ButtonSizes,
   variant: ButtonVariants,
   color: ButtonColors,
-  roundnessClasses: string = "rounded-full",
+  roundnessClasses: string = "rounded-md",
+  appearanceClasses: string = "",
 ) =>
   clsx(
     {
@@ -47,6 +48,7 @@ export const getButtonClasses = (
       "px-4 h-12 text-sm": size === ButtonSizes.Small,
     },
     roundnessClasses,
+    appearanceClasses,
   );
 
 export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
@@ -57,7 +59,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       variant = ButtonVariants.Primary,
       size = ButtonSizes.Small,
       color = ButtonColors.Primary,
-      roundness = "rounded-full",
+      roundness = "rounded-md",
       ...props
     },
     ref,

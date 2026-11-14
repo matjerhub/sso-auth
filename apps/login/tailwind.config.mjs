@@ -60,22 +60,22 @@ export default {
         // MatjerHub Design Tokens
         matjerhub: {
           primary: {
-            DEFAULT: '#0D5C46',
-            hover: '#0A4736',
-            active: '#073528',
+            DEFAULT: '#0D684B',
+            hover: '#0A523B',
+            active: '#004E37',
           },
           secondary: '#0284C7',
           success: '#10B981',
-          background: '#FAF8FF',
-          foreground: '#131B2E',
+          background: '#F8F9FF',
+          foreground: '#0B1C30',
           surface: {
             DEFAULT: '#FFFFFF',
-            muted: '#F1EEF8',
+            muted: '#EFF4FF',
           },
           muted: {
-            foreground: '#475569',
+            foreground: '#3F4943',
           },
-          border: '#DED9E8',
+          border: '#BEC9C1',
           error: '#DC2626',
           warning: '#D97706',
         },

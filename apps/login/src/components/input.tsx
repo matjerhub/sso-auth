@@ -25,6 +25,7 @@ const styles = (error: boolean, disabled: boolean, roundnessClasses: string = "r
       "focus:outline-none focus:ring-2 focus:ring-matjerhub-primary/20 text-base text-matjerhub-foreground placeholder:text-matjerhub-muted-foreground": true,
       "border-matjerhub-error hover:border-matjerhub-error focus:border-matjerhub-error focus:ring-matjerhub-error/20":
         error,
+      "border-warn": error,
       "pointer-events-none opacity-50 cursor-not-allowed": disabled,
     },
     roundnessClasses,
