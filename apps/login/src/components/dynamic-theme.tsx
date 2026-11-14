@@ -26,7 +26,10 @@ export function DynamicTheme({
   return (
     <div className="flex w-full flex-1 flex-col">
       {/* Brand Header */}
-      <header className="border-matjerhub-border bg-matjerhub-surface flex h-16 shrink-0 items-center border-b px-6 lg:px-8" dir="rtl">
+      <header
+        className="border-matjerhub-border bg-matjerhub-surface flex h-16 shrink-0 items-center border-b px-6 lg:px-8"
+        dir="rtl"
+      >
         <div className="flex items-center gap-2">
           <span className="font-heading text-matjerhub-primary text-xl font-bold">MatjerHub</span>
           <span className="font-heading text-matjerhub-muted-foreground text-xl">SSO</span>

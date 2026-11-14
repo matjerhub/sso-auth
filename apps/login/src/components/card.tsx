@@ -12,7 +12,7 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(
     {
       children,
       className = "",
-    roundness = "rounded-lg", // 8px in the MatjerHub admin design system
+      roundness = "rounded-lg", // 8px in the MatjerHub admin design system
       padding = "p-8",
       ...props
     },
