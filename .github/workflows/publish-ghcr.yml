@@ -63,6 +63,14 @@ jobs:
       - name: Build login application
         run: pnpm nx run @zitadel/login:build
 
+      - name: Ensure QEMU binfmt is registered for linux/amd64 builds
+        if: runner.arch != 'X64'
+        run: |
+          if ! docker run --rm --platform linux/amd64 alpine:3.22 true >/dev/null 2>&1; then
+            docker run --rm --privileged tonistiigi/binfmt --install amd64 || true
+            docker run --rm --platform linux/amd64 alpine:3.22 true
+          fi
+
       - name: Set up Docker Buildx (Host Docker Driver)
         uses: docker/setup-buildx-action@v3
         with:
