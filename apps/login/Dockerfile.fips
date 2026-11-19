@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 FROM registry.access.redhat.com/ubi9/nodejs-24
 USER root
 RUN update-crypto-policies --set FIPS

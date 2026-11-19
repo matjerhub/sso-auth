@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 # Builder stage: Sets up the environment, installs dependencies, copies the Zitadel binary, and configures permissions for the application.
 # This stage produces a runnable image that can be used for debugging.
 FROM debian:latest AS builder
