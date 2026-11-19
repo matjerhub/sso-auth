@@ -13,11 +13,26 @@ concurrency:
   group: ghcr-publish-${{ github.workflow }}-${{ github.event.workflow_run.head_branch || github.ref_name }}
   cancel-in-progress: false
 
+env:
+  DOCKER_BUILDKIT: "1"
+  RUNNER_TOOL_CACHE: /runner-cache/tool-cache
+  GOCACHE: /runner-cache/go-build
+  GOMODCACHE: /runner-cache/go-mod
+  NPM_CONFIG_CACHE: /runner-cache/npm
+  PNPM_STORE_DIR: /runner-cache/pnpm
+  YARN_CACHE_FOLDER: /runner-cache/yarn
+
 jobs:
   publish:
     if: github.ref == 'refs/heads/main'
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
+      - name: Isolate Docker auth config per parallel job
+        run: |
+          DOCKER_CFG_DIR="${RUNNER_TEMP}/.docker-${{ strategy.job-index }}"
+          mkdir -p "$DOCKER_CFG_DIR"
+          echo "DOCKER_CONFIG=$DOCKER_CFG_DIR" >> "$GITHUB_ENV"
+
       - name: Check out the exact CI-verified commit
         uses: actions/checkout@v4
         with:
@@ -27,6 +42,7 @@ jobs:
         uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
+          cache: false
 
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
@@ -37,7 +53,6 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: pnpm
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -48,14 +63,16 @@ jobs:
       - name: Build login application
         run: pnpm nx run @zitadel/login:build
 
-      - name: Set up Docker Buildx
+      - name: Set up Docker Buildx (Host Docker Driver)
         uses: docker/setup-buildx-action@v3
+        with:
+          driver: docker
 
       - name: Log in to GHCR
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
-          username: ${{ github.actor }}
+          username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Build and publish Zitadel API
@@ -72,8 +89,6 @@ jobs:
           tags: |
             ghcr.io/matjerhub/zitadel-api:prod
             ghcr.io/matjerhub/zitadel-api:${{ github.sha }}
-          cache-from: type=gha,scope=sso-auth-api
-          cache-to: type=gha,mode=max,scope=sso-auth-api
 
       - name: Build and publish login UI
         uses: docker/build-push-action@v6
@@ -85,5 +100,8 @@ jobs:
           tags: |
             ghcr.io/matjerhub/sso-auth-login:prod
             ghcr.io/matjerhub/sso-auth-login:${{ github.sha }}
-          cache-from: type=gha,scope=sso-auth-login
-          cache-to: type=gha,mode=max,scope=sso-auth-login
+
+      - name: Prune old dangling build layers safely
+        if: always()
+        run: |
+          docker image prune -f --filter "until=24h" 2>/dev/null || true

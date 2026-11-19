@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 FROM node:24-alpine
 
 LABEL org.opencontainers.image.title="MatjerHub SSO Login" \
